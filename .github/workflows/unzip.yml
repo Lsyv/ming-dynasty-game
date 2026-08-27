@@ -9,39 +9,105 @@ on:
 jobs:
   unzip-and-commit:
     runs-on: ubuntu-latest
+
     permissions:
       contents: write
 
     steps:
-      - name: 克隆仓库
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: 解压
+      - name: 检查 ZIP
+        shell: bash
         run: |
-          sudo apt-get update && sudo apt-get install -y unzip
-          shopt -s dotglob
+          set -e
+
+          echo "当前目录："
+          pwd
+
+          echo "当前文件："
+          ls -lah
+
+          if [ ! -f "1.zip" ]; then
+            echo "错误：找不到 1.zip"
+            exit 1
+          fi
+
+          echo "ZIP 文件信息："
+          file 1.zip
+
+          echo "ZIP 内容测试："
+          unzip -t 1.zip
+
+      - name: 清理旧文件
+        shell: bash
+        run: |
+          set -e
+
+          shopt -s dotglob nullglob
+
           for file in *; do
             case "$file" in
-              .git|authhub.zip|README.md|.github|.gitignore|LICENSE|docs|static) continue ;;
-              *) rm -rf "$file" ;;
+              .git)
+                ;;
+              .github)
+                ;;
+              .gitignore)
+                ;;
+              LICENSE)
+                ;;
+              README.md)
+                ;;
+              docs)
+                ;;
+              static)
+                ;;
+              1.zip)
+                ;;
+              *)
+                echo "删除：$file"
+                rm -rf -- "$file"
+                ;;
             esac
           done
+
+      - name: 解压 1.zip
+        shell: bash
+        run: |
+          set -e
+
+          echo "开始解压..."
+
           unzip -o 1.zip -d .
-          rm -rf extracted 2>/dev/null || true
+
+          echo "解压完成"
+
           rm -f 1.zip
-          echo "Unzip Done"
-          ls -la
+
+          echo "最终目录："
+          ls -lah
 
       - name: Git 配置
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: 提交并推送
+        shell: bash
         run: |
-          git add .
-          git commit -m "LsyvDlsv" || echo "Noing"
-          git push origin ${{ github.ref }}
+          set -e
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "没有需要提交的修改"
+            exit 0
+          fi
+
+          git commit -m "LsyvDlsv"
+
+          git push origin HEAD:${{ github.ref_name }}
