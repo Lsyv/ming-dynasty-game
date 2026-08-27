@@ -1,0 +1,47 @@
+name: Unzip
+
+on:
+  push:
+    paths:
+      - '1.zip'
+  workflow_dispatch:
+
+jobs:
+  unzip-and-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 克隆仓库
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: 解压
+        run: |
+          sudo apt-get update && sudo apt-get install -y unzip
+          shopt -s dotglob
+          for file in *; do
+            case "$file" in
+              .git|authhub.zip|README.md|.github|.gitignore|LICENSE|docs|static) continue ;;
+              *) rm -rf "$file" ;;
+            esac
+          done
+          unzip -o 1.zip -d .
+          rm -rf extracted 2>/dev/null || true
+          rm -f 1.zip
+          echo "Unzip Done"
+          ls -la
+
+      - name: Git 配置
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: 提交并推送
+        run: |
+          git add .
+          git commit -m "LsyvDlsv" || echo "Noing"
+          git push origin ${{ github.ref }}
