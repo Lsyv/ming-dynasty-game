@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="classic">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="王朝模拟器：天命 —— AI 原生历史王朝模拟器。用自然语言发布政令，AI 因果推演天下大势。">
+<title>王朝模拟器：天命</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23191410'/%3E%3Ctext x='32' y='44' font-size='36' text-anchor='middle' fill='%23c9a35c' font-family='serif'%3E%E6%99%9F%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<!--
+  《王朝模拟器：天命》 —— 纯前端 AI 原生历史王朝模拟器
+  ------------------------------------------------------------
+  · 无任何第三方依赖，全部使用原生 HTML/CSS/JS（ES2022）
+  · 经典 <script> 引入，双击本文件即可运行（file:// 协议可用）
+  · 所有动态内容渲染均经过 XSS 转义，用户/AI 输入不直接插入 HTML
+-->
+<noscript>
+  <div style="padding:2rem;text-align:center;font-family:sans-serif">
+    本游戏需要启用 JavaScript 才能运行。
+  </div>
+</noscript>
+
+<div id="app" class="app" hidden aria-label="王朝模拟器主界面">
+
+  <!-- ══════════ 顶部指标栏 TopBar ══════════ -->
+  <header class="topbar" id="topbar" role="banner">
+    <div class="topbar-left">
+      <button id="btn-menu" class="icon-btn topbar-menu-btn" aria-label="打开菜单">☰</button>
+      <div class="dynasty-badge">
+        <span id="hud-dynasty" class="dynasty-name">大晟</span>
+        <span id="hud-date" class="dynasty-date">1627 年 1 月</span>
+        <span id="hud-turn" class="dynasty-turn">第 1 回合</span>
+      </div>
+      <span id="mock-banner" class="mock-banner" hidden>本地 Demo 推演模式</span>
+    </div>
+    <div class="metric-strip" id="metric-strip"
+         role="list" aria-label="国家核心指标"><!-- 由 ui.js 渲染 --></div>
+    <div class="topbar-right">
+      <button id="btn-debug-top" class="icon-btn" aria-label="调试面板" hidden>🐞</button>
+      <button id="btn-menu-more" class="icon-btn" aria-label="系统菜单" title="系统菜单">⋮</button>
+    </div>
+  </header>
+
+  <!-- ══════════ 主布局：侧栏 + 内容 ══════════ -->
+  <div class="layout">
+    <nav class="sidenav" id="sidenav" role="navigation" aria-label="主导航">
+      <ul id="nav-list" role="list"><!-- 由 ui.js 渲染 --></ul>
+      <div class="sidenav-foot">
+        <div class="seed-line">种子 <code id="hud-seed">—</code></div>
+      </div>
+    </nav>
+
+    <main class="view-host" id="view-host" role="main">
+      <section id="view" class="view" tabindex="-1"><!-- 视图内容由 views.js 渲染 --></section>
+    </main>
+  </div>
+
+  <!-- ══════════ 底部：当前局势 + 圣旨输入 ══════════ -->
+  <footer class="composer" id="composer">
+    <div class="situation-line" id="situation-line" aria-live="polite">
+      <!-- 当前局势一句话摘要 -->
+    </div>
+
+    <div class="order-box">
+      <label class="order-label" for="order-input">📜 圣旨 / 政令</label>
+      <textarea id="order-input" rows="2"
+        placeholder="以自然语言颁布政令。例如：拨款五十万两赈济西北灾民，并派御史督办。"
+        aria-label="圣旨输入框"></textarea>
+      <div class="order-actions">
+        <div class="quick-chips" id="quick-chips" role="toolbar" aria-label="快捷命令"></div>
+        <div class="order-buttons">
+          <button id="btn-council" class="btn btn-ghost">召集廷议</button>
+          <button id="btn-endturn" class="btn btn-ghost">结束回合 ▸</button>
+          <button id="btn-issue" class="btn btn-primary">发布政令</button>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- 移动端底部导航 -->
+  <nav class="mobile-nav" id="mobile-nav" aria-label="移动端导航">
+    <ul id="mobile-nav-list" role="list"><!-- 由 ui.js 渲染 --></ul>
+  </nav>
+
+  <!-- 抽屉（移动端菜单）遮罩 -->
+  <div class="drawer-mask" id="drawer-mask" hidden></div>
+</div><!-- /#app -->
+
+<!-- ══════════ 全局覆盖层 ══════════ -->
+<div id="modal-root"></div>
+<div id="toast-root" class="toast-root" aria-live="polite" aria-atomic="false"></div>
+<div id="loading-root"></div>
+
+<!-- ══════════ 欢迎界面（首次进入） ══════════ -->
+<section id="welcome-screen" class="welcome-screen" aria-label="欢迎界面">
+  <div class="welcome-inner">
+    <div class="welcome-seal" aria-hidden="true">命</div>
+    <h1 class="welcome-title">王朝模拟器<span class="welcome-sub">· 天命</span></h1>
+    <p class="welcome-tagline">观察天下 → 廷议 → 自然语言下令 → 推演 → 历史书写</p>
+    <p class="welcome-desc">
+      你将登基为一国之君。国库空虚、灾荒四起、党争不息、边关告急——<br>
+      没有预设选项，只有你亲笔写下的诏书，与一个会因果推演的世界。
+    </p>
+    <div class="welcome-actions">
+      <button id="w-btn-new" class="btn btn-primary btn-lg">▶ 新的游戏</button>
+      <button id="w-btn-load" class="btn btn-lg">读取存档</button>
+      <button id="w-btn-api" class="btn btn-lg">API 设置</button>
+      <button id="w-btn-help" class="btn btn-lg">游戏说明</button>
+      <button id="w-btn-demo" class="btn btn-ghost btn-lg">无 API？进入 Demo 模式</button>
+    </div>
+    <p class="welcome-note">纯前端运行 · 数据保存在本机浏览器 · 浏览器直连 API 会暴露 Key，请注意安全</p>
+  </div>
+</section>
+
+<!-- ══════════ 脚本加载顺序即依赖顺序 ══════════ -->
+<script src="js/utils.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/mockai.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/map.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/views.js"></script>
+<script src="js/game.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
